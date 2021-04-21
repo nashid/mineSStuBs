@@ -1,0 +1,48 @@
+  public Appendable write(Appendable appendable) throws IOException {
+    appendable.append("package ").append(packageName).append(';').append("\n\n");
+    ImmutableSet<ClassName> classNames=FluentIterable.from(typeWriters).transformAndConcat(new Function<HasClassReferences,Set<ClassName>>(){
+      @Override public Set<ClassName> apply(      HasClassReferences input){
+        return input.referencedClasses();
+      }
+    }
+).toSet();
+    ImmutableSortedSet<ClassName> importCandidates=ImmutableSortedSet.<ClassName>naturalOrder().addAll(explicitImports).addAll(classNames).build();
+    ImmutableSet<ClassName> typeNames=FluentIterable.from(typeWriters).transform(new Function<TypeWriter,ClassName>(){
+      @Override public ClassName apply(      TypeWriter input){
+        return input.name;
+      }
+    }
+).toSet();
+    ImmutableSet.Builder<String> declaredSimpleNamesBuilder=ImmutableSet.builder();
+    Deque<TypeWriter> declaredTypes=Queues.newArrayDeque(typeWriters);
+    while (!declaredTypes.isEmpty()) {
+      TypeWriter currentType=declaredTypes.pop();
+      declaredSimpleNamesBuilder.add(currentType.name().simpleName());
+      declaredTypes.addAll(currentType.nestedTypeWriters);
+    }
+    ImmutableSet<String> declaredSimpleNames=declaredSimpleNamesBuilder.build();
+    BiMap<String,ClassName> importedClassIndex=HashBiMap.create();
+    for (    ClassName className : importCandidates) {
+      if (!(className.packageName().equals(packageName) && !className.enclosingClassName().isPresent()) && !(className.packageName().equals("java.lang") && className.enclosingSimpleNames().isEmpty()) && !typeNames.contains(className.topLevelClassName())) {
+        Optional<ClassName> importCandidate=Optional.of(className);
+        while (importCandidate.isPresent() && (importedClassIndex.containsKey(importCandidate.get().simpleName()) || declaredSimpleNames.contains(importCandidate.get().simpleName()))) {
+          importCandidate=importCandidate.get().enclosingClassName();
+        }
+        if (importCandidate.isPresent()) {
+          appendable.append("import ").append(importCandidate.get().canonicalName()).append(";\n");
+          importedClassIndex.put(importCandidate.get().simpleName(),importCandidate.get());
+        }
+      }
+    }
+    if (importedClassIndex.isEmpty()) {
+      appendable.append('\n');
+    }
+    CompilationUnitContext context=new CompilationUnitContext(packageName,ImmutableSet.copyOf(importedClassIndex.values()));
+    String sep="";
+    for (    TypeWriter typeWriter : typeWriters) {
+      appendable.append(sep);
+      typeWriter.write(appendable,context.createSubcontext(typeNames));
+      sep="\n";
+    }
+    return appendable;
+  }
