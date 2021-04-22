@@ -16,9 +16,11 @@ public class MinedSStuB extends MinedBug {
 	public MinedSStuB( String commitSHA1, String parentCommitSHA1, String commitFile, 
 			BugType bugType, String patch, String projectName, int oldLineNum, int oldNodeStartChar, int oldNodeLength, int newLineNum, 
 			int newNodeStartChar, int newNodeLength, 
-			String before, String after ) {
+			String before, String after,
+					   String contextBeforeFix, String contextAfterFix) {
 		super( commitSHA1, parentCommitSHA1, commitFile, patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
-				newLineNum, newNodeStartChar, newNodeLength, before, after );
+				newLineNum, newNodeStartChar, newNodeLength, before, after,
+				contextBeforeFix, contextAfterFix);
 		this.bugType = bugType;
 	}
 	

@@ -48,9 +48,11 @@ import edu.stanford.nlp.process.PTBTokenizer;
 import edu.stanford.nlp.process.Stemmer;
 
 import uk.ac.ed.inf.mpatsis.sstubs.AST.ASTDifferenceLocator;
+import uk.ac.ed.inf.mpatsis.sstubs.AST.ASTUtils;
 import uk.ac.ed.inf.mpatsis.sstubs.AST.RefactoredFunctionsVisitor;
 import uk.ac.ed.inf.mpatsis.sstubs.AST.RefactoredVariablesVisitor;
 import uk.ac.ed.inf.mpatsis.sstubs.core.BugType;
+import uk.ac.ed.inf.mpatsis.sstubs.core.Context;
 import uk.ac.ed.inf.mpatsis.sstubs.core.MinedBug;
 import uk.ac.ed.inf.mpatsis.sstubs.core.MinedSStuB;
 
@@ -78,6 +80,8 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.parser.Scanner;
+
+import static uk.ac.ed.inf.mpatsis.sstubs.AST.ASTUtils.getEnclosingFunction;
 
 
 enum EditType {
@@ -380,12 +384,28 @@ public class SStuBsMiner {
 									
 									ASTNode newASTNode = nodesDiff.getKey();
 									ASTNode oldASTNode = nodesDiff.getValue();
+
+									Context context = Context.ENCLOSING_FUNCTION;
+									String contextBeforeFix = getEnclosingFunction(oldASTNode);
+									String contextAfterFix = getEnclosingFunction(newASTNode);
+									if(context.equals(Context.PRECEDING_ONE_LINE)) {
+										contextBeforeFix = ASTUtils.getSucceedingLines(oldASTNode, 1);
+										contextAfterFix = ASTUtils.getSucceedingLines(newASTNode, 1);
+									} else if (context.equals(Context.PRECEDING_TWO_LINES)) {
+										contextBeforeFix = ASTUtils.getSucceedingLines(oldASTNode, 2);
+										contextAfterFix = ASTUtils.getSucceedingLines(newASTNode, 2);
+									} else if (context.equals(Context.ENCLOSING_FUNCTION)) {
+										contextBeforeFix = getEnclosingFunction(oldASTNode);
+										contextAfterFix = getEnclosingFunction(newASTNode);
+									}
+
 									MinedBug minedBug = new MinedBug(commitSHA1, parentCommitSHA1, commitFile, patch, projectName, 
 											 ((CompilationUnit) oldASTNode.getRoot()).getLineNumber( oldASTNode.getStartPosition() ), 
 											 oldASTNode.getStartPosition(), oldASTNode.getLength(), 
 											 ((CompilationUnit) newASTNode.getRoot()).getLineNumber( newASTNode.getStartPosition() ), 
 											 newASTNode.getStartPosition(), newASTNode.getLength(), oldASTNode.toString().replaceAll( "\n", " " ), 
-											newASTNode.toString().replaceAll( "\n", " " ));
+											newASTNode.toString().replaceAll( "\n", " " ),
+											contextBeforeFix, contextAfterFix);
 									currentMinedBugs.add( minedBug );
 									
 									if ( nodesDiff.getKey() instanceof Expression && 
@@ -409,7 +429,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_UNARY_OPERATOR, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength,
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											currentMinedStubs.add( minedSStuB );
 											
 											if ( !countedJavaFile ) {
@@ -445,7 +466,8 @@ public class SStuBsMiner {
 												commitFile, BugType.CHANGE_IDENTIFIER, 
 												patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 												newLineNum, newNodeStartChar, newNodeLength,
-												nodeBeforeString, nodeAfterString );
+												nodeBeforeString, nodeAfterString,
+												contextBeforeFix, contextAfterFix);
 										currentMinedStubs.add( minedSStuB );
 										
 										if ( !countedJavaFile ) {
@@ -479,7 +501,8 @@ public class SStuBsMiner {
 													commitFile, BugType.SWAP_ARGUMENTS, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -507,7 +530,8 @@ public class SStuBsMiner {
 													commitFile, BugType.OVERLOAD_METHOD_DELETED_ARGS, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -535,7 +559,8 @@ public class SStuBsMiner {
 													commitFile, BugType.OVERLOAD_METHOD_MORE_ARGS, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -563,7 +588,8 @@ public class SStuBsMiner {
 													commitFile, BugType.SWAP_BOOLEAN_LITERAL, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 										}
@@ -591,7 +617,8 @@ public class SStuBsMiner {
 											
 											MinedSStuB minedSStuB = new MinedSStuB( commitSHA1, parentCommitSHA1, 
 													commitFile, BugType.SWAP_ARGUMENTS, patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
-													newLineNum, newNodeStartChar, newNodeLength, nodeBeforeString, nodeAfterString );
+													newLineNum, newNodeStartChar, newNodeLength, nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -619,7 +646,8 @@ public class SStuBsMiner {
 													commitFile, BugType.DIFFERENT_METHOD_SAME_ARGS, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength,  
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -647,7 +675,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_CALLER_IN_FUNCTION_CALL, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength,  
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -675,7 +704,8 @@ public class SStuBsMiner {
 													commitFile, BugType.OVERLOAD_METHOD_DELETED_ARGS, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength,  
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -703,7 +733,8 @@ public class SStuBsMiner {
 													commitFile, BugType.OVERLOAD_METHOD_MORE_ARGS, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength,  
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -731,7 +762,8 @@ public class SStuBsMiner {
 													commitFile, BugType.SWAP_BOOLEAN_LITERAL, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength,  
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 										}
@@ -760,7 +792,8 @@ public class SStuBsMiner {
 													commitFile, BugType.SWAP_BOOLEAN_LITERAL, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -795,7 +828,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_OPERATOR, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -823,7 +857,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_OPERAND, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -851,7 +886,8 @@ public class SStuBsMiner {
 													commitFile, BugType.MORE_SPECIFIC_IF, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -879,7 +915,8 @@ public class SStuBsMiner {
 													commitFile, BugType.LESS_SPECIFIC_IF, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -917,7 +954,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_MODIFIER, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -955,7 +993,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_MODIFIER, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -993,7 +1032,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_MODIFIER, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 
@@ -1021,7 +1061,8 @@ public class SStuBsMiner {
 													commitFile, BugType.ADD_THROWS_EXCEPTION, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 																						
@@ -1049,7 +1090,8 @@ public class SStuBsMiner {
 													commitFile, BugType.DELETE_THROWS_EXCEPTION, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -1086,7 +1128,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_MODIFIER, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -1123,7 +1166,8 @@ public class SStuBsMiner {
 													commitFile, BugType.CHANGE_NUMERAL, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											
 											currentMinedStubs.add( minedSStuB );
 											
@@ -1164,7 +1208,8 @@ public class SStuBsMiner {
 												commitFile, BugType.CHANGE_IDENTIFIER, 
 												patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 												newLineNum, newNodeStartChar, newNodeLength, 
-												nodeBeforeString, nodeAfterString );
+												nodeBeforeString, nodeAfterString,
+												contextBeforeFix, contextAfterFix);
 										currentMinedStubs.add( minedSStuB );
 
 										if ( !countedJavaFile ) {
@@ -1200,7 +1245,8 @@ public class SStuBsMiner {
 													commitFile, BugType.MORE_SPECIFIC_IF, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											currentMinedStubs.add( minedSStuB );
 	
 											if ( !countedJavaFile ) {
@@ -1228,7 +1274,8 @@ public class SStuBsMiner {
 													commitFile, BugType.LESS_SPECIFIC_IF, 
 													patch, projectName, oldLineNum, oldNodeStartChar, oldNodeLength, 
 													newLineNum, newNodeStartChar, newNodeLength, 
-													nodeBeforeString, nodeAfterString );
+													nodeBeforeString, nodeAfterString,
+													contextBeforeFix, contextAfterFix);
 											currentMinedStubs.add( minedSStuB );
 	
 											if ( !countedJavaFile ) {

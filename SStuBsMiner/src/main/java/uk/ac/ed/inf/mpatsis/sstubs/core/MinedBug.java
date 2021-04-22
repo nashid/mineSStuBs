@@ -20,14 +20,16 @@ public class MinedBug {
 	protected final String sourceBeforeFix, sourceAfterFix;
 	
 	protected final static String TAB = "\t";
-	
+	protected final String contextBeforeFix;
+	protected final String contextAfterFix;
 	
 	/**
 	 * 
 	 */
 	public MinedBug( String commitSHA1, String parentCommitSHA1, String commitFile, String patch, String projectName, 
 			int oldLineNum, int oldNodeStartChar, int oldNodeLength, int newLineNum, 
-			int newNodeStartChar, int newNodeLength, String before, String after ) {
+			int newNodeStartChar, int newNodeLength, String before, String after,
+					 String contextBeforeFix, String contextAfterFix) {
 		this.fixCommitSHA1 = commitSHA1;
 		this.fixCommitParentSHA1 = parentCommitSHA1;
 		this.bugFilePath = commitFile;
@@ -44,6 +46,9 @@ public class MinedBug {
 		
 		this.sourceBeforeFix = before;
 		this.sourceAfterFix = after;
+
+		this.contextBeforeFix = contextBeforeFix;
+		this.contextAfterFix = contextAfterFix;
 	}
 	
 	
