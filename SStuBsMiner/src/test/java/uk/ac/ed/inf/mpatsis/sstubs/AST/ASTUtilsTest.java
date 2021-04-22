@@ -6,12 +6,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-
-import static org.junit.Assert.*;
-import static uk.ac.ed.inf.mpatsis.sstubs.AST.ASTUtils.getLineNumberForASTNode;
 
 public class ASTUtilsTest {
     private Path workingDir;
@@ -42,5 +40,61 @@ public class ASTUtilsTest {
         // go to the line to inspect (line-107)
         IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
         Assert.assertEquals(107, ASTUtils.getLineNumberForASTNode(line));
+    }
+
+    @Test
+    public void canExtractEnclosingFunctionForChangeUnaryOperator() throws IOException {
+        // go to the line to inspect
+        IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
+        String actualEnclosingFunction = ASTUtils.getEnclosingFunction(line);
+
+        String expectedEnclosingFunction = Files.readString(Path.of("src/test/resources").resolve("expectedEnclosingFunction.txt"));
+        Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedEnclosingFunction),
+                ASTUtils.removeExtraSpacesAndTrim(actualEnclosingFunction));
+    }
+
+
+    @Test
+    public void canExtractPrecedingOneLineForChangeUnaryOperator() {
+        // go to the line to inspect (line-107)
+        IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
+        String actualPrecedingLine = ASTUtils.getPrecedingLines(line, 107, 1);
+
+        String expectedPrecedingOneLine = "}";
+        Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedPrecedingOneLine),
+                ASTUtils.removeExtraSpacesAndTrim(actualPrecedingLine));
+    }
+
+    @Test
+    public void canExtractPrecedingMultipleLinesForChangeUnaryOperator() {
+        // go to the line to inspect (line-107)
+        IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
+        String actualPrecedingLine = ASTUtils.getPrecedingLines(line, 107, 2);
+
+        String expectedPrecedingLines = "} }";
+        Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedPrecedingLines),
+                ASTUtils.removeExtraSpacesAndTrim(actualPrecedingLine));
+    }
+
+    @Test
+    public void canExtractSucceedingOneLineForChangeUnaryOperator() {
+        // go to the line to inspect (line-107)
+        IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
+        String actualSucceedingLine = ASTUtils.getSucceedingLines(line, 1);
+
+        String expectedSucceedingLine = "appendable.append('\\n');";
+        Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedSucceedingLine),
+                ASTUtils.removeExtraSpacesAndTrim(actualSucceedingLine));
+    }
+
+    @Test
+    public void canExtractSucceedingMultipleLinesForChangeUnaryOperator() {
+        // go to the line to inspect (line-107)
+        IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
+        String actualSucceedingLines = ASTUtils.getSucceedingLines(line, 2);
+
+        String expectedSucceedingLines = "appendable.append('\\n'); }";
+        Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedSucceedingLines),
+                ASTUtils.removeExtraSpacesAndTrim(actualSucceedingLines));
     }
 }
