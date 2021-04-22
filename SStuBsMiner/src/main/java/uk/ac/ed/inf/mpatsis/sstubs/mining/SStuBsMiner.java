@@ -166,7 +166,7 @@ public class SStuBsMiner {
 	/**
 	 * 
 	 */
-	public SStuBsMiner( final File DATASET_EXPORT_DIR ) {
+	public SStuBsMiner( final File DATASET_EXPORT_DIR) {
 		commits = 0;
 		bugFixCommits = 0;
 		onlyOneLiners = 0;
@@ -224,7 +224,7 @@ public class SStuBsMiner {
 	 * @param repositoryDir
 	 * @throws Exception 
 	 */
-	public void mineSStuBs( String repositoryDir ) throws Exception {
+	public void mineSStuBs( String repositoryDir, Context context) throws Exception {
 		this.git = getGitRepository( repositoryDir );
 		this.repo = git.getRepository();
 		this.walk = new RevWalk( repo );
@@ -385,15 +385,26 @@ public class SStuBsMiner {
 									ASTNode newASTNode = nodesDiff.getKey();
 									ASTNode oldASTNode = nodesDiff.getValue();
 
-									Context context = Context.ENCLOSING_FUNCTION;
-									String contextBeforeFix = getEnclosingFunction(oldASTNode);
-									String contextAfterFix = getEnclosingFunction(newASTNode);
+									// for adding context
+									// Get old and new file contents
+									ObjectId oldFileId = diff.getOldId().toObjectId();
+									ObjectLoader oldLoader = repo.open( oldFileId );
+									final String oldFileContent = new String( oldLoader.getBytes(), "UTF-8" );
+
+									ObjectId newFileId = diff.getNewId().toObjectId();
+									ObjectLoader newLoader = repo.open( newFileId );
+									final String newFileContent = new String( newLoader.getBytes(), "UTF-8" );
+									// for adding context
+
+
+									String contextBeforeFix = "";
+									String contextAfterFix = "";
 									if(context.equals(Context.PRECEDING_ONE_LINE)) {
-										contextBeforeFix = ASTUtils.getSucceedingLines(oldASTNode, 1);
-										contextAfterFix = ASTUtils.getSucceedingLines(newASTNode, 1);
+										contextBeforeFix = ASTUtils.getSucceedingLines(oldASTNode, 1, oldFileContent);
+										contextAfterFix = ASTUtils.getSucceedingLines(newASTNode, 1, newFileContent);
 									} else if (context.equals(Context.PRECEDING_TWO_LINES)) {
-										contextBeforeFix = ASTUtils.getSucceedingLines(oldASTNode, 2);
-										contextAfterFix = ASTUtils.getSucceedingLines(newASTNode, 2);
+										contextBeforeFix = ASTUtils.getSucceedingLines(oldASTNode, 2, oldFileContent);
+										contextAfterFix = ASTUtils.getSucceedingLines(newASTNode, 2, newFileContent);
 									} else if (context.equals(Context.ENCLOSING_FUNCTION)) {
 										contextBeforeFix = getEnclosingFunction(oldASTNode);
 										contextAfterFix = getEnclosingFunction(newASTNode);
@@ -2235,8 +2246,14 @@ public class SStuBsMiner {
 	 */
 	public static void main(String[] args) throws Exception {
 		// Read the repository heads
-		final String topJProjectsPath = args[0];
-		final File DATASET_EXPORT_DIR = new File(args[1]);
+		// final String topJProjectsPath = args[0];
+		//final File DATASET_EXPORT_DIR = new File(args[1]);
+
+		String topJProjectsPath = "/Volumes/nashid-samsung-ssd-2tb/ubc-works/repos/mineSStuBs/GitHubScripts/repo-dump";
+		File DATASET_EXPORT_DIR = new File("/Volumes/nashid-samsung-ssd-2tb/ubc-works/repos/mineSStuBs/GitHubScripts/data-dump");
+		// Context context = Context.ENCLOSING_FUNCTION;
+		// Context context = Context.PRECEDING_ONE_LINE;
+		Context context = Context.PRECEDING_TWO_LINES;
 
 		try {
 			if ( !DATASET_EXPORT_DIR.exists() ) DATASET_EXPORT_DIR.mkdir();
@@ -2254,7 +2271,7 @@ public class SStuBsMiner {
 		for ( File repoDir : reposList ) {
 			if ( !repoDir.isDirectory() ) continue;
 			System.out.println( "Mining repository: " + repoDir.getAbsolutePath() );
-			miner.mineSStuBs( repoDir.getAbsolutePath() );			
+			miner.mineSStuBs( repoDir.getAbsolutePath(), context);
 			System.out.println( "Projects Mined: " + ++p );
 			System.gc();
 		}

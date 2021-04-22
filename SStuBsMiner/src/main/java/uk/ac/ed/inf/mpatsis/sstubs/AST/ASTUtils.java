@@ -13,18 +13,38 @@ public class ASTUtils {
         return lineNum;
     }
 
-    public static String getEnclosingFunction(ASTNode astNode) {
+    public static String getEnclosingFunction(final ASTNode astNode) {
         /*
             reference: https://stackoverflow.com/questions/14449262/how-to-get-the-enclosing-method-node-with-jdt
             ASTNode parentNode = ASTNodes.getParent(methodInvocationNode, ASTNode.METHOD_DECLARATION);
         */
+        if (astNode.getNodeType() == ASTNode.METHOD_DECLARATION) {
+            return astNode.toString();
+        }
+
         ASTNode enclosingFunctionAstNode = ASTNodes.getParent(astNode, ASTNode.METHOD_DECLARATION);
+        if (enclosingFunctionAstNode == null) {
+            if (ASTNodes.getParent(astNode, ASTNode.FIELD_DECLARATION) != null) {
+                //example: private static final Pattern TYPE_PATTERN=Pattern.compile("(?:[\\w$]+\\.)*([\\w$]+)");
+                enclosingFunctionAstNode = ASTNodes.getParent(astNode, ASTNode.COMPILATION_UNIT);
+            }
+
+            if (astNode.getNodeType() == ASTNode.TYPE_DECLARATION) {
+                enclosingFunctionAstNode = ASTNodes.getParent(astNode, ASTNode.COMPILATION_UNIT);
+            }
+        }
+
         String enclosingFunction = enclosingFunctionAstNode == null ? "" : enclosingFunctionAstNode.toString();
+        if (enclosingFunction == "") {
+            System.err.println("Error: context missing: EnclosingFunction");
+        }
+
         return enclosingFunction;
     }
 
-    public static String getPrecedingLines(ASTNode astNode, int lineNo, int howManyPrecedingLines) {
-        String fileContent = astNode.getRoot().toString();
+    public static String getPrecedingLines(ASTNode astNode, int lineNo, int howManyPrecedingLines,
+                                           String fileContent) {
+        // String fileContent = astNode.getRoot().toString();
         int lineNumber = ((CompilationUnit) astNode.getRoot())
                 .getLineNumber(astNode.getStartPosition());
 
@@ -33,11 +53,19 @@ public class ASTUtils {
                 .limit(howManyPrecedingLines)
                 .collect(Collectors.joining(" "));
 
+        if (contextLines == "") {
+            System.err.println("Error: context missing: getPrecedingLines");
+        }
+
         return contextLines;
     }
 
-    public static String getSucceedingLines(ASTNode astNode, int succeedingLines) {
-        String fileContent = astNode.getRoot().toString();
+    public static String getSucceedingLines(ASTNode astNode, int succeedingLines, String fileContent) {
+        // The following line gives normalized fileContext like after removing spaces etc
+        // String fileContent = astNode.getRoot().toString();
+        //fileContent = astNode.getRoot().getAST().getSourceCode();
+        //String fileContent = new String(astNode.getRoot().getAST()..scanner.source)
+
         int lineNumber = ((CompilationUnit) astNode.getRoot())
                 .getLineNumber(astNode.getStartPosition());
 
@@ -46,6 +74,9 @@ public class ASTUtils {
                 .limit(succeedingLines)
                 .collect(Collectors.joining(" "));
 
+        if (contextLines == "") {
+            System.err.println("Error: context missing: getSucceedingLines");
+        }
         return contextLines;
     }
 

@@ -14,12 +14,13 @@ import java.util.HashMap;
 public class ASTUtilsTest {
     private Path workingDir;
     private MethodDeclaration methodToInspect;
+    private String fileContent;
 
     @Before
     public void setUp() throws Exception {
         this.workingDir = Path.of("src/test/resources");
         Path file = this.workingDir.resolve("JavaWriter-CHANGE_UNARY_OPERATOR.java");
-        String fileContent = Files.readString(file);
+        this.fileContent = Files.readString(file);
 
         ASTParser parser = ASTParser.newParser(AST.JLS8);
         HashMap<String, String> options = new HashMap<String, String>(JavaCore.getOptions());
@@ -58,7 +59,7 @@ public class ASTUtilsTest {
     public void canExtractPrecedingOneLineForChangeUnaryOperator() {
         // go to the line to inspect (line-107)
         IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
-        String actualPrecedingLine = ASTUtils.getPrecedingLines(line, 107, 1);
+        String actualPrecedingLine = ASTUtils.getPrecedingLines(line, 107, 1, fileContent);
 
         String expectedPrecedingOneLine = "}";
         Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedPrecedingOneLine),
@@ -69,7 +70,7 @@ public class ASTUtilsTest {
     public void canExtractPrecedingMultipleLinesForChangeUnaryOperator() {
         // go to the line to inspect (line-107)
         IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
-        String actualPrecedingLine = ASTUtils.getPrecedingLines(line, 107, 2);
+        String actualPrecedingLine = ASTUtils.getPrecedingLines(line, 107, 2, fileContent);
 
         String expectedPrecedingLines = "} }";
         Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedPrecedingLines),
@@ -80,7 +81,7 @@ public class ASTUtilsTest {
     public void canExtractSucceedingOneLineForChangeUnaryOperator() {
         // go to the line to inspect (line-107)
         IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
-        String actualSucceedingLine = ASTUtils.getSucceedingLines(line, 1);
+        String actualSucceedingLine = ASTUtils.getSucceedingLines(line, 1, fileContent);
 
         String expectedSucceedingLine = "appendable.append('\\n');";
         Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedSucceedingLine),
@@ -91,7 +92,7 @@ public class ASTUtilsTest {
     public void canExtractSucceedingMultipleLinesForChangeUnaryOperator() {
         // go to the line to inspect (line-107)
         IfStatement line = (IfStatement) methodToInspect.getBody().statements().get(10);
-        String actualSucceedingLines = ASTUtils.getSucceedingLines(line, 2);
+        String actualSucceedingLines = ASTUtils.getSucceedingLines(line, 2, fileContent);
 
         String expectedSucceedingLines = "appendable.append('\\n'); }";
         Assert.assertEquals(ASTUtils.removeExtraSpacesAndTrim(expectedSucceedingLines),
